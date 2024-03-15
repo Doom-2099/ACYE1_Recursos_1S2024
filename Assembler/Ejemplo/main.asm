@@ -152,6 +152,129 @@ LlenarTablero MACRO
         INC SI
 ENDM
 
+CrearArchivo MACRO nombreArchivo, handler
+    LOCAL ManejarError, FinCrearArchivo
+    MOV AH, 3Ch ; Codigo interrupcion
+    MOV CX, 00h ; Atributo del archivo
+    LEA DX, nombreArchivo ; Nombre del archivo
+    INT 21h
+
+    MOV handler, AX ; capturar el handler asignado al archivo (16 bits)
+    RCL BL, 1
+    AND BL, 1
+    CMP BL, 1
+    JE ManejarError
+    JMP FinCrearArchivo
+
+    ManejarError:
+        ImprimirCadenas salto
+        ImprimirCadenas errorCrearArchivo
+        obtenerOpcion opcion
+
+    FinCrearArchivo:
+ENDM
+
+AbrirArchivo MACRO nombreArchivo, handler
+    LOCAL ManejarError, FinAbrirArchivo
+    MOV BL, 0
+
+    MOV AH, 3Dh ; codigo de interrupcion
+    MOV AL, 00h ; modo de apertura del archivo, 0 -> Lectura | 1 -> Escritura | 2 -> Lectura/Escritura
+    LEA DX, nombreArchivo ; Nombre del archivo
+    INT 21h
+
+    MOV handler, AX ; Capturar el handler asignado al archivo (16 bits)
+    RCL BL, 1
+    CMP BL, 1
+    JE ManejarError
+    JMP FinAbrirArchivo
+
+    ManejarError:
+        ImprimirCadenas salto
+        ImprimirCadenas errorAbrirArchivo
+        obtenerOpcion opcion
+
+    FinAbrirArchivo:
+ENDM
+
+CerrarArchivo MACRO handler
+    LOCAL ManejarError, FinCerrarArchivo
+
+    MOV AH, 3Eh ; Codigo de interrupcion
+    MOV BX, handler ; handler del archivo
+    INT 21h
+
+    RCL BL, 1
+    AND BL, 1
+    CMP BL, 1
+    JE ManejarError
+    JMP FinCerrarArchivo
+
+    ManejarError:
+        ImprimirCadenas salto
+        ImprimirCadenas errorCerrarArchivo
+        obtenerOpcion opcion
+
+    FinCerrarArchivo:
+ENDM
+
+LeerArchivo MACRO buffer, handler
+    LOCAL ManejarError, FinLeerArchivo
+
+    MOV AH, 3Fh ; Codigo de interrupcion
+    MOV BX, handler ; handler del archivo
+    MOV CX, 300 ; Cantidad de bytes que se van a leer
+    LEA DX, buffer ; Posicion en memoria del buffer donde se almacenara el texto leido
+    INT 21h
+
+    MOV BL, 0
+    RCL BL, 1
+    CMP BL, 1
+    JE ManejarError
+    JMP FinLeerArchivo
+
+    ManejarError:
+        ImprimirCadenas salto
+        ImprimirCadenas errorLeerArchivo
+        obtenerOpcion opcion
+    
+    FinLeerArchivo:
+ENDM
+
+EscribirArchivo MACRO cadena, handler
+    LOCAL ManejarError, FinEscribirArchivo
+
+    MOV AH, 40h ; Codigo de interrupcion
+    MOV BX, handler ; Handler de archivo
+    MOV CX, 120 ; Cantidad de bytes que se van a escribir
+    LEA DX, cadena1 ; Direccion de la cadena a escribir
+    INT 21h
+
+    RCL BL, 1 ; Capturar el bit de CF en el registro BL
+    AND BL, 1 ; Validar que en BL quede un 1 o 0
+    CMP BL, 1 ; Verificar si no hay codigo de error
+    JE ManejarError
+    JMP FinEscribirArchivo
+
+    ManejarError:
+        ImprimirCadenas salto
+        ImprimirCadenas errorEscribirArchivo
+        obtenerOpcion opcion
+    
+    FinEscribirArchivo:
+ENDM
+
+PosicionarApuntador MACRO handler
+    MOV AH, 42h ; Codigo Interrupcion
+    MOV AL, 02h ; Modo de posicionamiento
+    MOV BX, handler ; handler archivo
+    MOV CX, 00h ; offset mas significativo
+    MOV DX, 00h ; offset menos significativo
+    INT 21h
+
+    ; Capturar Error
+ENDM
+
 .MODEL small
 
 .STACK 64h
@@ -164,6 +287,17 @@ ENDM
     indicadorColumnas db "  A B C D E F G H", "$"
     indicadorFilas db "12345678", "$"
     tablero db 64 dup(32) ; ROW-MAJOR O COLUMN-MAJOR
+    handlerArchivo dw ? ; Handler o manejador del archivo de 16 bits
+    nombreArchivo db "TestFile.txt", 00h ; Nombre del archivo, DEBE TERMINAR EN CARACTER NULO
+    errorCrearArchivo db "Ocurrio Un Error Al Crear El Archivo", "$"
+    errorAbrirArchivo db "Ocurrio Un Error Al Abrir El Archivo", "$"
+    errorCerrarArchivo db "Ocurrio Un Error Al Cerrar Archivo", "$"
+    errorLeerArchivo db "Ocurrio Un Error Al Leer Archivo", "$"
+    errorEscribirArchivo db "Ocurrio Un Error Al Escribir Archivo", "$"
+    contentArchivo db "Este es un texto de prueba para escribir en los archivos"
+    archivoCreado db 10, 13, "El Archivo Se Creo Correctamente", "$"
+    buffer db 300 dup("$") ; Buffer para almacenar el contenido leido de un archivo
+
 .CODE
     MOV AX, @data
     MOV DS, AX
@@ -180,29 +314,65 @@ ENDM
             CMP opcion, 49 ; Estimulando el registro de banderas
             JE ImprimirTablero
 
-            CMP opcion, 50
-            JE ImprimirPuntajes
-
             CMP opcion, 51
-            JE ImprimirReportes
+            JE ImprimirAuxReportes
 
             CMP opcion, 52
-            JE Salir
-
+            JE AuxSalir2
             JMP Menu
+
+        AuxSalir2:
+            JMP Salir
+
+        ImprimirAuxReportes:
+            JMP ImprimirReportes
 
         ImprimirTablero:
             LimpiarConsola
             LlenarTablero
             ImprimirTableroJuego
+            obtenerOpcion opcion
+            JMP Menu
 
-        PedirMovimiento:
-
-        ImprimirPuntajes:
+        AuxSalir: ; Etiquetas auxiliar para los saltos cortos o relativos
+            JMP Salir
 
         ImprimirReportes:
+            CrearArchivo nombreArchivo, handlerArchivo
+            CMP opcion, 13  ; Verificar que no hay ningun error
+            JE AuxSalir
+
+            PosicionarApuntador handler
+            EscribirArchivo contentArchivo, handlerArchivo
+            CMP opcion, 13  ; Verificar que no hay ningun error
+            JE AuxSalir4
+
+            CerrarArchivo handlerArchivo
+            CMP opcion, 13  ; Verificar que no hay ningun error
+            JE AuxSalir4
+            JMP ContinuarArchivos
+        
+        AuxSalir4:
+            JMP Salir
+
+        ContinuarArchivos:
+            ImprimirCadenas archivoCreado
+            obtenerOpcion opcion
+
+            AbrirArchivo nombreArchivo, handlerArchivo
+            CMP opcion, 13  ; Verificar que no hay ningun error
+            JE AuxSalir4
+
+            LeerArchivo buffer, handlerArchivo
+            CMP opcion, 13  ; Verificar que no hay ningun error
+            JE Salir
+
+            CerrarArchivo handlerArchivo
+            CMP opcion, 13 ; Verificar que no hay ningun error
+            JE Salir
         
         Salir:
+            ImprimirCadenas buffer
             MOV AX, 4C00h ; Interrupcion Para Terminar Programa
             INT 21h
     Main ENDP
