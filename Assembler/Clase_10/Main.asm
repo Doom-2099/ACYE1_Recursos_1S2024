@@ -19,6 +19,45 @@ Retardo MACRO valor
     INT 15h
 ENDM
 
+; * MACRO que revisa el estado del keyboard buffer (VER DOCUMENTACION DE INTERRUPCIONES)
+LeerKeyboardBuffer MACRO
+    LOCAL AlmacenarTecla, Continuar, TeclaDer, TeclaIzq, TeclaSpace
+    MOV AH, 01h     ; * Interrupcion para observar el keyboard buffer
+    INT 16h
+    JNZ AlmacenarTecla  ; ! SI ZF ES 0 quiere decir que hay una tecla disponible en el buffer
+    JMP Continuar       ; ! SI ZF ES 1 que continue con la animacion
+
+    AlmacenarTecla:
+        MOV CX, 0       ; ? Colocar CX = 0 Para terminar el ciclo de la animacion
+
+        CMP AH, 4Dh  ; ? Compara si la tecla presionada es BIOS CODE = 4D(->)
+        JE TeclaDer
+
+        CMP AH, 4Bh   ; ? Compara si la tecla presionada es BIOS CODE = 4B(<-)
+        JE TeclaIzq
+
+        CMP AH, 39h   ; ? Compara si la tecla presionada es BIOS CODE = 4D([spacebar])
+        JE TeclaSpace
+        JMP Continuar    ; * Si no se presiono ninguna de estas teclas, se continua con la animacion
+
+        TeclaDer:   ; * Si La Tecla Presionada Fue (->), Aumentar El Valor De Pagina En 1
+            ADD paginaActual, 1
+            JMP Continuar
+
+        TeclaIzq:   ; * Si La Tecla Presionada Fue (<-), Disminuir El Valor De Pagina En 1
+            SUB paginaActual, 1
+            JMP Continuar
+
+        TeclaSpace: ; * Si La Tecla Presionada Fue ([spacebar]), Terminar Animaciones
+            MOV paginaActual, 8
+            JMP Continuar
+
+    Continuar:
+        MOV AH, 0Ch ; * Limpiar El Keyboard Buffer
+        MOV AL, 00h ; * Codigo para que no ejecute ninguna otra instruccion la interrupcion
+        INT 21h
+ENDM
+
 
 ; * MACRO para imprimir cadenas utilizando la interrupcion 10h
 ; * @params
@@ -76,6 +115,8 @@ Animacion1 MACRO
         POP CX  ; * Saco mi contador para la etiqueta "Ciclo" de la pila
         DEC CX  ; * Decremento CX en una unidad
 
+        LeerKeyboardBuffer
+
         ; * Ya que es un movimiento vertical hacia abajo. Mi variable fila almacena la siguiente posicion
         ; * En donde va a iniciar el siguiente print
         ; * Posteriormente este valor de fila, se asigna a "filaActual" que lleva el control de las filas del print
@@ -85,7 +126,6 @@ Animacion1 MACRO
         MOV filaActual, AL
         MOV fila, AL
 
-        
         ; ! DEBIDO A LA CANTIDAD DE INSTRUCCIONES UTILIZADAS DENTRO DE ESTA ETIQUETA
         ; ! SE HACE UN SALTO CORTO HACIA LA ETIQUETA "TerminarCiclo" con JE en caso CX == 0
         ; ! PARA NO TENER PROBLEMAS CON LA LONGITUD DE LOS SALTOS
@@ -123,6 +163,8 @@ Animacion2 MACRO
 
         POP CX
         DEC CX
+
+        LeerKeyboardBuffer
 
         MOV AL, columna
         INC AL
@@ -164,6 +206,8 @@ Animacion3 MACRO
 
         POP CX
         DEC CX
+
+        LeerKeyboardBuffer
 
         MOV AL, columna
         INC AL
@@ -211,6 +255,8 @@ Animacion4 MACRO
         POP CX
         DEC CX
 
+        LeerKeyboardBuffer
+
         MOV AL, columna
         INC AL
         MOV columna, AL
@@ -252,20 +298,59 @@ ENDM
     LimpiarConsola
 
     Main PROC
-        Animacion1
-        MOV paginaActual, 1
-        Animacion2
-        MOV paginaActual, 2
-        Animacion3
-        MOV paginaActual, 3
-        Animacion4
 
-        Retardo 5
+        Ciclo: ; ? -> Etiqueta que permite enciclar de manera indefinida las animaciones
 
-        LimpiarConsola
-        
-        MOV AX, 4C00h
-        INT 21h
+            ; ! REINICIAR LAS VARIABLES DE LA ANIMACION
+            MOV fila, 0
+            MOV filaActual, 0
+            MOV columna, 0
+            
+            CMP paginaActual, 0 ; * Salto A Pagina 1
+            JZ EtAnimacion1Aux
+
+            CMP paginaActual, 1 ; * Salto A Pagina 2
+            JZ EtAnimacion2Aux
+
+            CMP paginaActual, 2 ; * Salto A Pagina 3
+            JZ EtAnimacion3Aux
+
+            CMP paginaActual, 3 ; * Salto A Pagina 4
+            JZ EtAnimacion4Aux
+            JMP Salir   ; ! -> Si "paginaActual" Sobrepasa A Los Valores Definidos Que Salga Del Ciclo
+
+            ; ? ETIQUETAS AUXILIARES PARA EVITAR ERRORES CON LA LONGITUD DE SALTOS
+            EtAnimacion1Aux:    
+                JMP EtAnimacion1
+            EtAnimacion2Aux:
+                JMP EtAnimacion2
+            EtAnimacion3Aux:
+                JMP EtAnimacion3
+            EtAnimacion4Aux:
+                JMP EtAnimacion4
+
+            ; * Invocacion Animacion 1
+            EtAnimacion1:
+                Animacion1
+                JMP Ciclo
+
+            ; * Invocacion Animacion 2
+            EtAnimacion2:
+                Animacion2
+                JMP Ciclo
+
+            ; * Invocacion Animacion 3
+            EtAnimacion3:
+                Animacion3
+                JMP Ciclo
+
+            ; * Invocacion Animacion 4
+            EtAnimacion4:
+                Animacion4
+                JMP Ciclo
+                
+        Salir:
+            MOV AX, 4C00h
+            INT 21h
     Main ENDP
-
 END
