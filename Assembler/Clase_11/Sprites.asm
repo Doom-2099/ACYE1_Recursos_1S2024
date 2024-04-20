@@ -86,7 +86,7 @@ TableroTotito MACRO
 ENDM
 
 SpriteX MACRO
-    LOCAL Ciclo1, Ciclo2
+    LOCAL Diagonal1, Diagonal2
     XOR AX, AX
     XOR BX, BX
     XOR CX, CX
