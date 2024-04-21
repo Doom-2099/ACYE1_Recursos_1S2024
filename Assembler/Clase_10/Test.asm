@@ -524,7 +524,7 @@ ENDM
 
 .DATA
     handler             dw ?
-    filename            db "Input1.txt", 0
+    filename            db "Input2.txt", 0
     salto               db 10, 13, "$"
     errorCode           db ?
     errorOpenFile       db "Ocurrio Un Error Al Abrir El Archivo - ERRCODE: ", "$"
