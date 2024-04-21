@@ -2,3 +2,13 @@
 *.EXE
 
 *.OBJ
+
+*.exe_
+
+*.debug
+
+*.list
+
+*.symbol
+
+*.~asm
