@@ -256,6 +256,7 @@ Promedio MACRO
     MOV decimal, DX
     MOV SI, 0
 
+    MOV base, 10000
     CrearCadena entero, cadenaResult
 
     MOV cadenaResult[SI], 46
@@ -713,6 +714,10 @@ ENDM
     entero              dw ?
     decimal             dw ?
     cantDecimal         db 0
+    comando1 db "reporte"
+
+
+    comandoIngresado db 20 dup ("$")
 .CODE
     MOV AX, @data
     MOV DS, AX
@@ -766,3 +771,74 @@ ENDM
         INT 21h
     Main ENDP
 END
+
+
+LEA SI, cadena1
+LEA DI, cadena2
+MOV CX, 7
+REPE CMPSB ; Comparacion de cadenas
+
+"reporte"
+"reporte"
+
+primera iteracion
+'r' - 'r' = 0 => ZF = 1
+SI + 1
+DI + 1
+REPE ZF == 1 && CX != 0 -> Falso sale del ciclo
+
+Segunda Iteracion
+'e' - 'e' = 0 => ZF = 1
+SI + 1
+DI + 1
+REPE ZF == 1 && CX != 0 -> Falso sale del ciclo
+
+JNE MsgError
+JE EjecutarInstruccion
+
+---------------------------------------------------------
+
+
+"reporte"
+"info"
+
+primera iteracion
+'r' - 'i' != 0 => ZF = 0
+SI + 1
+DI + 1
+REPE ZF == 1 && CX != 0 -> Falso sale del ciclo
+
+JNE MsgError
+JE EjecutarInstruccion
+
+
+
+mov ax, @DATA
+mov DS, AX
+MOV ES, AX
+
+
+
+SI, DI APUNTADORES DE MIS CADENAS
+
+[SI] - [DI]
+
+
+
+CompararCadena 4, comando1, comandoIngresado
+JE instruccion1
+
+CompararCadena 7, comando2, comandoIngresado
+JE Instruccion2
+
+CompararCadena 10, comando3, comandoIngresado
+JE Instruccion3
+
+Salir:
+
+CompararCadena MACRO longitudCadena, comando, buffer
+    MOV CX, longitudCadena
+    LEA SI, comando
+    LEA DI, buffer
+    REPE CMPSB
+ENDM
